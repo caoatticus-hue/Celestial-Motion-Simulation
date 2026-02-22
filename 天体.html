@@ -1,0 +1,3036 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>天体模拟器 · AI增强版 (完整修复)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            border: none !important;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
+            background: #1A1A1A;
+            color: #ffffff;
+            overflow: hidden;
+            touch-action: none;
+            user-select: none;
+        }
+
+        #canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            cursor: grab;
+            touch-action: none;
+        }
+
+        #canvas:active {
+            cursor: grabbing;
+        }
+
+        .menu-trigger {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            background: rgba(30, 30, 30, 0.6);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1000;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .menu-trigger:active {
+            transform: scale(0.92);
+        }
+
+        .menu-trigger svg {
+            width: 24px;
+            height: 24px;
+            fill: #007AFF;
+        }
+
+        .dropdown-menu {
+            position: fixed;
+            top: 75px;
+            left: 16px;
+            width: 380px;
+            background: rgba(30, 30, 30, 0.7);
+            backdrop-filter: blur(50px) saturate(200%);
+            -webkit-backdrop-filter: blur(50px) saturate(200%);
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+            z-index: 999;
+            opacity: 0;
+            transform: translateY(-20px) scale(0.95);
+            pointer-events: none;
+            transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            max-height: 70vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            padding: 0;
+        }
+
+        .dropdown-menu.show {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: all;
+        }
+
+        .dropdown-menu-content {
+            overflow-y: auto;
+            flex: 1;
+            padding: 0 0 12px 0;
+            margin: 0;
+        }
+
+        .menu-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 24px 24px 16px;
+            background: transparent;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .menu-title {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .close-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            background: rgba(120, 120, 128, 0.25);
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .control-section {
+            margin: 0;
+            padding: 16px 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .control-section:last-child {
+            border-bottom: none;
+        }
+
+        .section-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 16px;
+            letter-spacing: 0.08em;
+            font-weight: 700;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 8px;
+            margin: 0 0 20px;
+        }
+
+        .btn-primary {
+            flex: 1;
+            height: 48px;
+            border-radius: 16px;
+            background: #007AFF;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+        }
+
+        .btn-primary:active {
+            transform: scale(0.96);
+            background: #0051D5;
+        }
+
+        .btn-primary.paused {
+            background: #34C759;
+            box-shadow: 0 4px 12px rgba(52, 199, 89, 0.3);
+        }
+
+        .btn-secondary {
+            width: 48px;
+            height: 48px;
+            border-radius: 16px;
+            background: rgba(120, 120, 128, 0.25);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-secondary svg {
+            width: 22px;
+            height: 22px;
+            fill: currentColor;
+        }
+
+        .preset-toggle {
+            display: flex;
+            background: rgba(120, 120, 128, 0.18);
+            border-radius: 12px;
+            padding: 4px;
+            margin: 0 0 20px;
+        }
+
+        .preset-btn {
+            flex: 1;
+            height: 36px;
+            border-radius: 10px;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .preset-btn.active {
+            background: #007AFF;
+            color: white;
+            box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+        }
+
+        .mode-toggle {
+            display: flex;
+            background: rgba(120, 120, 128, 0.18);
+            border-radius: 12px;
+            padding: 4px;
+            margin: 0 0 20px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            height: 36px;
+            border-radius: 10px;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mode-btn.active {
+            background: #007AFF;
+            color: white;
+            box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
+        }
+
+        .integrator-selector {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 0 0 20px;
+        }
+
+        .toggle-label {
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        .custom-select {
+            position: relative;
+            display: inline-block;
+            width: 160px;
+        }
+
+        .custom-select select {
+            appearance: none;
+            width: 100%;
+            padding: 10px 14px;
+            background: rgba(120, 120, 128, 0.25);
+            border-radius: 12px;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            outline: none;
+            transition: background 0.2s;
+        }
+
+        .custom-select select:hover {
+            background: rgba(120, 120, 128, 0.35);
+        }
+
+        .custom-select::after {
+            content: "▼";
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+            position: absolute;
+            top: 50%;
+            right: 12px;
+            transform: translateY(-50%);
+            pointer-events: none;
+        }
+
+        .precision-control {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 0 0 20px;
+        }
+
+        .slider-control {
+            margin: 0 0 20px;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        .slider-value-input {
+            width: 70px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            font-weight: 700;
+            text-align: center;
+            padding: 4px;
+            border: none;
+        }
+
+        .slider-value-input:focus {
+            outline: none;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 44px;
+            border-radius: 22px;
+            background: transparent;
+            outline: none;
+            -webkit-appearance: none;
+            cursor: pointer;
+            margin: 0;
+        }
+
+        input[type="range"]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: rgba(120, 120, 128, 0.25);
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            margin-top: -12px;
+            transition: transform 0.1s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:active {
+            transform: scale(1.15);
+        }
+
+        .toggle-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            cursor: pointer;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .toggle-row:first-of-type {
+            border-top: none;
+        }
+
+        .toggle-switch {
+            width: 51px;
+            height: 31px;
+            background: rgba(120, 120, 128, 0.32);
+            border-radius: 16px;
+            padding: 2px;
+            transition: background 0.2s;
+        }
+
+        .toggle-switch.active {
+            background: #34C759;
+        }
+
+        .toggle-knob {
+            width: 27px;
+            height: 27px;
+            border-radius: 50%;
+            background: white;
+            transition: transform 0.2s;
+        }
+
+        .toggle-switch.active .toggle-knob {
+            transform: translateX(20px);
+        }
+
+        .ai-toggle-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .ai-toggle-row .toggle-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .demo-badge {
+            background: #FFC107;
+            color: #1A1A1A;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .solutions-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 0;
+            cursor: pointer;
+            margin-bottom: 12px;
+            transition: all 0.3s;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .solutions-title {
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .solutions-arrow {
+            width: 24px;
+            height: 24px;
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            fill: rgba(255, 255, 255, 0.6);
+        }
+
+        .solutions-header.expanded .solutions-arrow {
+            transform: rotate(180deg);
+        }
+
+        .special-solutions {
+            display: grid;
+            gap: 10px;
+            overflow: hidden;
+            max-height: 0;
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            margin: 0;
+        }
+
+        .special-solutions.expanded {
+            max-height: 800px;
+            opacity: 1;
+            margin-top: 4px;
+        }
+
+        .solution-btn {
+            padding: 14px 16px;
+            border-radius: 16px;
+            background: rgba(120, 120, 128, 0.15);
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .solution-btn:active {
+            background: rgba(120, 120, 128, 0.3);
+            transform: scale(0.98);
+        }
+
+        .solution-name {
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .solution-desc {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+            font-weight: 400;
+        }
+
+        .body-card {
+            background: rgba(120, 120, 128, 0.12);
+            border-radius: 20px;
+            padding: 18px;
+            margin-bottom: 12px;
+            position: relative;
+        }
+
+        .body-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 14px;
+            padding-right: 40px;
+        }
+
+        .body-color-picker {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            box-shadow: 0 0 12px currentColor;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .body-color-picker:active {
+            transform: scale(1.2);
+        }
+
+        .body-name-input {
+            flex: 1;
+            background: transparent;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            font-family: inherit;
+            padding: 4px;
+            min-width: 0;
+            outline: none;
+        }
+
+        .body-name-input:focus {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+
+        .body-actions {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .follow-btn,
+        .delete-body {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .follow-btn {
+            background: rgba(0, 122, 255, 0.15);
+            color: #007AFF;
+        }
+
+        .follow-btn.following {
+            background: rgba(52, 199, 89, 0.2);
+            color: #34C759;
+        }
+
+        .follow-btn:active {
+            transform: scale(0.9);
+        }
+
+        .delete-body {
+            background: rgba(255, 59, 48, 0.15);
+            color: #FF3B30;
+        }
+
+        .delete-body:active {
+            background: rgba(255, 59, 48, 0.3);
+            transform: scale(0.9);
+        }
+
+        .follow-btn svg,
+        .delete-body svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+
+        .slider-control-single {
+            margin-top: 12px;
+        }
+
+        .velocity-panel {
+            margin-top: 16px;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 16px;
+        }
+
+        .velocity-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .velocity-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 8px;
+            align-items: center;
+        }
+
+        .velocity-label {
+            width: 50px;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .velocity-input {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            padding: 8px 10px;
+            border: none;
+        }
+
+        .velocity-unit {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.4);
+            width: 40px;
+        }
+
+        .add-btn {
+            width: 100%;
+            height: 48px;
+            border-radius: 16px;
+            background: rgba(0, 122, 255, 0.15);
+            border: 1px dashed rgba(0, 122, 255, 0.4);
+            color: #007AFF;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .add-btn:active {
+            background: rgba(0, 122, 255, 0.25);
+            transform: scale(0.98);
+        }
+
+        .io-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .io-btn {
+            flex: 1;
+            height: 48px;
+            border-radius: 16px;
+            background: rgba(0, 122, 255, 0.15);
+            border: 1px dashed rgba(0, 122, 255, 0.4);
+            color: #007AFF;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .io-btn:active {
+            background: rgba(0, 122, 255, 0.25);
+            transform: scale(0.98);
+        }
+
+        .color-picker-panel {
+            position: fixed;
+            top: 75px;
+            left: 410px;
+            width: 280px;
+            background: rgba(30, 30, 30, 0.7);
+            backdrop-filter: blur(50px) saturate(200%);
+            -webkit-backdrop-filter: blur(50px) saturate(200%);
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+            z-index: 1000;
+            opacity: 0;
+            transform: translateY(-20px) scale(0.95);
+            pointer-events: none;
+            transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 20px;
+        }
+
+        .color-picker-panel.show {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: all;
+        }
+
+        .color-picker-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .color-picker-title {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .color-picker-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            background: rgba(120, 120, 128, 0.25);
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .color-picker-close:hover {
+            background: rgba(120, 120, 128, 0.35);
+        }
+
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 0;
+        }
+
+        .color-option {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .color-option:active {
+            transform: scale(0.9);
+        }
+
+        .color-option.selected {
+            transform: scale(1.1);
+            box-shadow: 0 0 0 3px white;
+        }
+
+        .energy-panel {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            background: rgba(30, 30, 30, 0.5);
+            backdrop-filter: blur(40px) saturate(200%);
+            -webkit-backdrop-filter: blur(40px) saturate(200%);
+            border-radius: 12px;
+            padding: 12px;
+            font-size: 12px;
+            color: #aaa;
+            z-index: 200;
+            pointer-events: none;
+            display: none;
+            min-width: 220px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .energy-panel div {
+            margin-bottom: 4px;
+        }
+
+        .energy-value {
+            color: #0f0;
+            font-weight: 600;
+        }
+
+        .error-history {
+            margin-top: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 8px;
+        }
+
+        .error-history .title {
+            font-size: 11px;
+            color: #aaa;
+            margin-bottom: 4px;
+        }
+
+        .error-history canvas {
+            width: 100%;
+            height: 40px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+        }
+
+        .edge-indicator {
+            position: fixed;
+            display: flex;
+            align-items: center;
+            background: rgba(30, 30, 30, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 6px 12px 6px 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+            cursor: pointer;
+            z-index: 100;
+            transition: transform 0.2s;
+            white-space: nowrap;
+            pointer-events: auto;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .edge-indicator:active {
+            transform: scale(0.95);
+        }
+
+        .edge-indicator .color-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-right: 8px;
+            box-shadow: 0 0 8px currentColor;
+        }
+
+        .edge-indicator.vertical {
+            flex-direction: column;
+            padding: 8px 6px;
+        }
+
+        .edge-indicator.vertical .color-dot {
+            margin-right: 0;
+            margin-bottom: 8px;
+        }
+
+        .edge-indicator.vertical span:last-child {
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+            line-height: 1.2;
+        }
+
+        .edge-indicator.left {
+            left: 12px;
+        }
+
+        .edge-indicator.right {
+            right: 12px;
+        }
+
+        .edge-indicator.top {
+            top: 12px;
+        }
+
+        .edge-indicator.bottom {
+            bottom: 12px;
+        }
+
+        .collision-dialog {
+            position: fixed;
+            left: 50%;
+            transform: translateX(-50%) scale(0.9);
+            background: rgba(30, 30, 30, 0.9);
+            backdrop-filter: blur(25px) saturate(180%);
+            border-radius: 20px;
+            padding: 16px 28px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #FF3B30;
+            z-index: 2000;
+            opacity: 0;
+            transition: all 0.3s;
+            pointer-events: none;
+            white-space: nowrap;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .collision-dialog.show {
+            opacity: 1;
+            transform: translateX(-50%) scale(1);
+        }
+
+        .collision-dialog.top {
+            top: 100px;
+        }
+
+        .collision-dialog.bottom {
+            bottom: 100px;
+        }
+
+        .info-toast {
+            position: fixed;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%) scale(0.9);
+            background: rgba(30, 30, 30, 0.9);
+            backdrop-filter: blur(20px);
+            padding: 18px 36px;
+            border-radius: 20px;
+            font-size: 16px;
+            font-weight: 600;
+            opacity: 0;
+            transition: all 0.3s;
+            pointer-events: none;
+            z-index: 2000;
+            white-space: nowrap;
+        }
+
+        .info-toast.show {
+            opacity: 1;
+            transform: translateX(-50%) scale(1);
+        }
+
+        .distance-dialog {
+            position: fixed;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%) scale(0.9);
+            background: rgba(30, 30, 30, 0.9);
+            backdrop-filter: blur(20px);
+            border-radius: 30px;
+            padding: 12px 24px;
+            color: #ffaa00;
+            font-size: 16px;
+            font-weight: 600;
+            z-index: 2000;
+            opacity: 0;
+            transition: opacity 0.3s, transform 0.3s;
+            pointer-events: none;
+            white-space: nowrap;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .distance-dialog.show {
+            opacity: 1;
+            transform: translateX(-50%) scale(1);
+            pointer-events: all;
+        }
+
+        .distance-dialog span {
+            color: white;
+            font-weight: 400;
+        }
+
+        .distance-close {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 16px;
+            line-height: 1;
+            transition: background 0.2s;
+        }
+
+        .distance-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .gesture-hint {
+            position: fixed;
+            top: 75px;
+            right: 16px;
+            background: rgba(30, 30, 30, 0.7);
+            backdrop-filter: blur(20px);
+            padding: 18px;
+            border-radius: 20px;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.6;
+            opacity: 0;
+            transition: opacity 0.5s;
+            pointer-events: none;
+            max-width: 240px;
+        }
+
+        .gesture-hint.show {
+            opacity: 1;
+        }
+
+        .long-press-hint {
+            position: fixed;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 18px;
+            border-radius: 20px;
+            font-size: 13px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 3000;
+            white-space: nowrap;
+        }
+
+        .long-press-hint.show {
+            opacity: 1;
+        }
+
+        .velocity-tip {
+            position: fixed;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            border-radius: 8px;
+            padding: 4px 10px;
+            font-size: 12px;
+            color: white;
+            pointer-events: none;
+            z-index: 500;
+            white-space: nowrap;
+            transform: translate(-50%, -100%);
+            margin-top: -10px;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="canvas"></canvas>
+
+    <!-- 能量面板 -->
+    <div class="energy-panel" id="energyPanel">
+        <div>总能量: <span class="energy-value" id="totalEnergy">0.00</span></div>
+        <div>能量误差: <span class="energy-value" id="energyError">0.00%</span></div>
+        <div>总角动量: <span class="energy-value" id="totalAngularMomentum">0.00</span></div>
+        <div>总动量: <span class="energy-value" id="totalMomentum">0.00</span></div>
+        <div>质心速度: <span class="energy-value" id="comVelocity">0.00</span></div>
+        <div class="error-history">
+            <div class="title">动态误差曲线</div>
+            <canvas id="errorCanvas" width="200" height="40"></canvas>
+        </div>
+    </div>
+
+    <div class="gesture-hint" id="gestureHint">
+        <strong>操作指南</strong><br>
+        • 单指拖拽：移动天体<br>
+        • 双指拖拽：平移视角<br>
+        • 双指捏合：缩放<br>
+        • 单击标签：跳转天体<br>
+        • 双击标签：居中天体<br>
+        • 长按标签：移动天体到屏幕中心<br>
+        • 长按天体：拖拽箭头设置速度<br>
+        • 点击距离线：显示详细距离（再点击背景或叉号取消）<br>
+        • 点击眼睛按钮：跟随天体（始终居中）<br>
+        • 高级模式下可开启AI实时调节（demo）
+    </div>
+
+    <div class="info-toast" id="infoToast">提示信息</div>
+    <div class="long-press-hint" id="longPressHint">长按移动中...</div>
+
+    <div class="collision-dialog" id="collisionDialog">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="#FF3B30">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+        </svg>
+        <span id="collisionText">碰撞提示</span>
+    </div>
+
+    <!-- 颜色选择器 -->
+    <div class="color-picker-panel" id="colorPickerPanel">
+        <div class="color-picker-header">
+            <span class="color-picker-title">选择颜色</span>
+            <div class="color-picker-close" onclick="closeColorPicker()">×</div>
+        </div>
+        <div class="color-grid" id="colorGrid"></div>
+    </div>
+
+    <div id="edgeContainer"></div>
+
+    <div class="velocity-tip" id="velocityTip" style="display: none;">速度: 0.0, 角度: 0°</div>
+
+    <!-- 距离对话框 -->
+    <div class="distance-dialog" id="distanceDialog">
+        <span id="distanceText"></span>
+        <div class="distance-close" onclick="closeDistanceDialog()">×</div>
+    </div>
+
+    <div class="menu-trigger" id="menuTrigger">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
+        </svg>
+    </div>
+
+    <!-- 下拉菜单 -->
+    <div class="dropdown-menu" id="dropdownMenu">
+        <div class="dropdown-menu-content">
+            <div class="menu-header">
+                <span class="menu-title" id="menuTitle">天体模拟器</span>
+                <button class="close-btn" onclick="toggleMenu()">×</button>
+            </div>
+
+            <div class="control-section">
+                <div class="btn-row">
+                    <button class="btn-primary" id="playBtn" onclick="toggleSimulation()">
+                        <svg id="playIcon" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <rect x="6" y="4" width="4" height="16" rx="1" />
+                            <rect x="14" y="4" width="4" height="16" rx="1" />
+                        </svg>
+                        <span id="playText">暂停</span>
+                    </button>
+                    <button class="btn-secondary" onclick="resetSimulation()" title="重置">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="preset-toggle">
+                    <button class="preset-btn active" id="presetEdu" onclick="setPreset('education')">基础</button>
+                    <button class="preset-btn" id="presetResearch" onclick="setPreset('research')">高级</button>
+                </div>
+
+                <div class="mode-toggle">
+                    <button class="mode-btn active" id="modeMass" onclick="setMode('mass')">质点模式</button>
+                    <button class="mode-btn" id="modeSolid" onclick="setMode('solid')">质体模式</button>
+                </div>
+
+                <div class="integrator-selector">
+                    <span class="toggle-label">积分方法</span>
+                    <div class="custom-select">
+                        <select id="integratorSelect" onchange="setIntegrator(this.value)">
+                            <option value="euler">欧拉法 (Euler)</option>
+                            <option value="rk4">龙格-库塔4阶 (RK4)</option>
+                            <option value="symplectic" selected>辛算法 (二阶)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="precision-control" id="precisionControl" style="display: none;">
+                    <span class="toggle-label">时间步长</span>
+                    <div class="custom-select">
+                        <select id="stepSizeSelect" onchange="setStepSize(this.value)">
+                            <option value="0.1">0.1</option>
+                            <option value="0.05">0.05</option>
+                            <option value="0.01" selected>0.01</option>
+                            <option value="0.005">0.005</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="slider-control">
+                    <div class="slider-label">
+                        <span>时间流速</span>
+                        <input type="number" id="speedInput" class="slider-value-input" min="0" max="400" step="0.1" value="1.0" onchange="updateSpeedFromInput(this.value)">
+                    </div>
+                    <input type="range" id="speedRange" min="0" max="400" step="0.1" value="1.0" oninput="updateSpeedFromRange(this.value)">
+                </div>
+
+                <div class="slider-control">
+                    <div class="slider-label">
+                        <span>引力常数 G (自然单位)</span>
+                        <span class="slider-value" id="gValue">1.0</span>
+                    </div>
+                    <input type="range" min="0.1" max="3" step="0.1" value="1.0" oninput="updateG(this.value)">
+                </div>
+
+                <div class="toggle-row" onclick="toggleDistanceLines()">
+                    <span class="toggle-label">显示距离线</span>
+                    <div class="toggle-switch" id="distanceToggle">
+                        <div class="toggle-knob"></div>
+                    </div>
+                </div>
+
+                <div class="toggle-row" onclick="toggleForceArrows()">
+                    <span class="toggle-label">显示受力箭头</span>
+                    <div class="toggle-switch" id="forceArrowToggle">
+                        <div class="toggle-knob"></div>
+                    </div>
+                </div>
+
+                <!-- AI辅助开关 (仅高级模式可见) -->
+                <div class="ai-toggle-row" id="aiToggleRow" style="display: none;">
+                    <div class="toggle-label">
+                        <span>AI实时调节</span>
+                        <span class="demo-badge">demo</span>
+                    </div>
+                    <div class="toggle-switch" id="aiToggle" onclick="toggleAI()">
+                        <div class="toggle-knob"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <div class="solutions-header" id="solutionsHeader" onclick="toggleSolutions()">
+                    <span class="solutions-title">特殊解模型 (10种)</span>
+                    <svg class="solutions-arrow" viewBox="0 0 24 24">
+                        <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z" />
+                    </svg>
+                </div>
+                <div class="special-solutions" id="specialSolutions">
+                    <button class="solution-btn" onclick="loadSpecialSolution('figure8')">
+                        <span class="solution-name">Figure-8 轨道 (修复)</span>
+                        <span class="solution-desc">等质量三体周期性稳定解 (Moore数据)</span>
+                    </button>
+                    <button class="solution-btn" onclick="loadSpecialSolution('lagrange')">
+                        <span class="solution-name">拉格朗日三角解</span>
+                        <span class="solution-desc">等边三角形构型，相对静止</span>
+                    </button>
+                    <button class="solution-btn" onclick="loadSpecialSolution('euler')">
+                        <span class="solution-name">欧拉共线解</span>
+                        <span class="solution-desc">共线旋转构型 (中间静止)</span>
+                    </button>
+                    <button class="solution-btn" onclick="loadSpecialSolution('binary_planet')">
+                        <span class="solution-name">双星+行星</span>
+                        <span class="solution-desc">双星系统，外加一颗行星绕质心</span>
+                    </button>
+                    <button class="solution-btn" onclick="loadSpecialSolution('4body_square')">
+                        <span class="solution-name">四体正方形</span>
+                        <span class="solution-desc">等质量天体构成正方形旋转</span>
+                    </button>
+                    <button class="solution-btn" onclick="loadSpecialSolution('3body_linear')">
+                        <span class="solution-name">不稳定共线三体</span>
+                        <span class="solution-desc">直线排列，快速混沌</span>
+                    </button>
+                    <button class="solution-btn" onclick="loadSpecialSolution('chaos')">
+                        <span class="solution-name">混沌示例</span>
+                        <span class="solution-desc">随机初值，不可预测</span>
+                    </button>
+                    <!-- 新增三个特殊解 -->
+                    <button class="solution-btn" onclick="loadSpecialSolution('2022NA')">
+                        <span class="solution-name">2022-NA-3body_Table3(b)</span>
+                        <span class="solution-desc">质量 [0.5312, 2.2837, 1], 周期 7.0421</span>
+                    </button>
+                    <button class="solution-btn" onclick="loadSpecialSolution('brouckeA15')">
+                        <span class="solution-name">Broucke A15</span>
+                        <span class="solution-desc">等质量共线解, 周期 92.056119</span>
+                    </button>
+                    <button class="solution-btn" onclick="loadSpecialSolution('freefall')">
+                        <span class="solution-name">Free fall F64(1,0.8,0.6)</span>
+                        <span class="solution-desc">零初速度自由落体解, 周期 9.748682</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <div class="section-label">天体管理 (质量单位: 10³⁰ kg ≈ 0.5太阳质量)</div>
+                <div id="bodiesList"></div>
+                <button class="add-btn" onclick="addBody()">
+                    添加天体
+                </button>
+                <div class="io-row">
+                    <button class="io-btn" onclick="exportConfig()">导出配置</button>
+                    <button class="io-btn" onclick="document.getElementById('importFile').click()">导入配置</button>
+                    <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importConfig(event)">
+                </div>
+            </div>
+        </div>
+        <!-- 无底部拖拽条 -->
+    </div>
+
+    <script>
+        (function() {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+
+            let dpr = window.devicePixelRatio || 1;
+
+            // 全局变量
+            let G = 1.0;
+            let timeScale = 1.0;
+            let isRunning = true;
+            let simulationMode = 'mass';
+            let showForceArrows = false;
+            let showDistanceLines = false;
+
+            let preset = 'education';
+            let integrator = 'symplectic';
+            let stepSize = 0.01;
+
+            let aiEnabled = false; // AI辅助开关
+
+            const softeningSq = 1e-3;
+            const VELOCITY_WORLD_FACTOR = 20;
+            const c_squared = 1e8;
+
+            let bodies = [];
+            const greekNames = [
+                'Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon', 'Zeta', 'Eta', 'Theta',
+                'Iota', 'Kappa', 'Lambda', 'Mu', 'Nu', 'Xi', 'Omicron', 'Pi',
+                'Rho', 'Sigma', 'Tau', 'Upsilon', 'Phi', 'Chi', 'Psi', 'Omega'
+            ];
+            const MAX_TRAIL_LENGTH = 100;
+
+            // Pantone 颜色 (14色)
+            const pantoneColors = [
+                '#EB7190', '#ECA759', '#E7E5A1', '#A0E2BA', '#96DAEA', '#92C0E9', '#BF98DE',
+                '#E54360', '#DE5307', '#F1C914', '#85C159', '#00AFC7', '#0073CB', '#6A1792'
+            ];
+            const colors = pantoneColors;
+
+            let scale = 1.0;
+            let offsetX = 0;
+            let offsetY = 0;
+            const MIN_SCALE = 0.005;
+            const MAX_SCALE = 200;
+
+            let isDragging = false;
+            let draggedBody = null;
+            let lastTouchDistance = 0;
+            let lastTouchCenter = { x: 0, y: 0 };
+            let isPanning = false;
+            let menuOpen = false;
+            let solutionsExpanded = false;
+            let currentEditingBody = null;
+
+            let activeCollisions = new Set();
+            let collisionTimeout = null;
+
+            let velocityEditBody = null;
+            let isDraggingVelocity = false;
+            let velocityLongPressTimer = null;
+
+            let targetBodyScale = 1.0;
+            let currentBodyScale = 1.0;
+            const BODY_SCALE_SPEED = 0.1;
+
+            let initialEnergy = null;
+            let highlightedLine = null;
+
+            let followedBodyId = null;
+
+            let energyErrorHistory = [];
+
+            // AI相关变量
+            let lastAICallTime = 0;
+            const AI_CALL_INTERVAL = 800; // 毫秒
+
+            // 生成名称
+            function generateBodyName(id) {
+                const index = id % greekNames.length;
+                const baseName = greekNames[index];
+                const cycle = Math.floor(id / greekNames.length);
+                if (cycle === 0) return baseName;
+                else return baseName + cycle;
+            }
+
+            function getRandomColor() {
+                return colors[Math.floor(Math.random() * colors.length)];
+            }
+
+            function toggleFollow(bodyId) {
+                if (followedBodyId === bodyId) {
+                    followedBodyId = null;
+                } else {
+                    followedBodyId = bodyId;
+                    const body = bodies.find(b => b.id === bodyId);
+                    if (body) {
+                        offsetX = - (body.x - canvas.width / dpr / 2) * scale;
+                        offsetY = - (body.y - canvas.height / dpr / 2) * scale;
+                    }
+                }
+                updateBodiesList();
+            }
+
+            class Body {
+                constructor(x, y, mass, color, id) {
+                    this.id = id;
+                    this.x = x;
+                    this.y = y;
+                    this.vx = 0;
+                    this.vy = 0;
+                    this.mass = mass;
+                    this.radius = this.calculateRadius();
+                    this.color = color;
+                    this.trail = [];
+                    this.name = generateBodyName(id);
+                }
+                calculateRadius() {
+                    return 8 + Math.sqrt(this.mass) * 5;
+                }
+                draw() {
+                    ctx.save();
+                    // 轨迹绘制
+                    if (this.trail.length > 1) {
+                        for (let i = 0; i < this.trail.length - 1; i++) {
+                            const p1 = worldToScreen(this.trail[i].x, this.trail[i].y);
+                            const p2 = worldToScreen(this.trail[i + 1].x, this.trail[i + 1].y);
+                            const inBounds = (p1.x > -50 && p1.x < canvas.width + 50 && p1.y > -50 && p1.y < canvas.height + 50) ||
+                                (p2.x > -50 && p2.x < canvas.width + 50 && p2.y > -50 && p2.y < canvas.height + 50);
+                            if (inBounds) {
+                                const progress = i / this.trail.length;
+                                const lineWidth = 1 + progress * 3;
+                                const alpha = 0.2 + progress * 0.5;
+                                ctx.strokeStyle = this.color;
+                                ctx.globalAlpha = alpha;
+                                ctx.lineWidth = lineWidth;
+                                ctx.lineCap = 'round';
+                                ctx.beginPath();
+                                ctx.moveTo(p1.x, p1.y);
+                                ctx.lineTo(p2.x, p2.y);
+                                ctx.stroke();
+                            }
+                        }
+                    }
+                    const pos = worldToScreen(this.x, this.y);
+                    const r = Math.max(this.radius * scale * currentBodyScale, 3);
+                    ctx.globalAlpha = 0.3;
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y, r * 2.5, 0, 2 * Math.PI);
+                    ctx.fill();
+                    ctx.globalAlpha = 1.0;
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y, r, 0, 2 * Math.PI);
+                    ctx.fillStyle = this.color;
+                    ctx.fill();
+                    ctx.fillStyle = 'white';
+                    ctx.font = 'bold ' + Math.max(10, r * 0.7) + 'px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(formatLabelName(this.name), pos.x, pos.y);
+                    if (this === draggedBody) {
+                        ctx.shadowColor = this.color;
+                        ctx.shadowBlur = 15;
+                        ctx.beginPath();
+                        ctx.arc(pos.x, pos.y, r + 4, 0, 2 * Math.PI);
+                        ctx.strokeStyle = 'white';
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                        ctx.shadowBlur = 0;
+                    }
+                    ctx.restore();
+                }
+                isOnScreen() {
+                    const pos = worldToScreen(this.x, this.y);
+                    const margin = 40 * dpr;
+                    return pos.x > margin && pos.x < canvas.width - margin &&
+                        pos.y > margin && pos.y < canvas.height - margin;
+                }
+            }
+
+            // 物理引擎函数
+            function computeAccelerationFor(index, states) {
+                let ax = 0, ay = 0;
+                const body = bodies[index];
+                for (let i = 0; i < bodies.length; i++) {
+                    if (i === index) continue;
+                    const other = bodies[i];
+                    const dx = states[i].x - states[index].x;
+                    const dy = states[i].y - states[index].y;
+                    const distSq = dx * dx + dy * dy + softeningSq;
+                    const dist = Math.sqrt(distSq);
+
+                    const forceNewton = G * body.mass * other.mass / distSq;
+                    ax += forceNewton * dx / dist / body.mass;
+                    ay += forceNewton * dy / dist / body.mass;
+
+                    if (preset === 'research') {
+                        const vx_rel = states[index].vx - states[i].vx;
+                        const vy_rel = states[index].vy - states[i].vy;
+                        const v2 = vx_rel * vx_rel + vy_rel * vy_rel;
+                        const r_dot_v = dx * vx_rel + dy * vy_rel;
+                        const GM = G * (body.mass + other.mass);
+                        const factor = GM / (c_squared * dist * dist * dist);
+                        const axPN = factor * ((4 * GM / dist - v2) * dx + 4 * r_dot_v * vx_rel);
+                        const ayPN = factor * ((4 * GM / dist - v2) * dy + 4 * r_dot_v * vy_rel);
+                        ax += axPN;
+                        ay += ayPN;
+                    }
+                }
+                return { ax, ay };
+            }
+
+            function eulerStep(activeBodies, dt) {
+                const allStates = bodies.map(b => ({ x: b.x, y: b.y, vx: b.vx, vy: b.vy }));
+                const acc = bodies.map((_, i) => computeAccelerationFor(i, allStates));
+                for (let b of activeBodies) {
+                    const i = b.id;
+                    b.vx += acc[i].ax * dt;
+                    b.vy += acc[i].ay * dt;
+                    b.x += b.vx * dt;
+                    b.y += b.vy * dt;
+                }
+            }
+
+            function symplecticStep(activeBodies, dt) {
+                const allStates = bodies.map(b => ({ x: b.x, y: b.y, vx: b.vx, vy: b.vy }));
+                const acc0 = bodies.map((_, i) => computeAccelerationFor(i, allStates));
+                for (let b of activeBodies) {
+                    const i = b.id;
+                    b.vx += acc0[i].ax * dt * 0.5;
+                    b.vy += acc0[i].ay * dt * 0.5;
+                }
+                for (let b of activeBodies) {
+                    b.x += b.vx * dt;
+                    b.y += b.vy * dt;
+                }
+                const newStates = bodies.map(b => ({ x: b.x, y: b.y, vx: b.vx, vy: b.vy }));
+                const acc1 = bodies.map((_, i) => computeAccelerationFor(i, newStates));
+                for (let b of activeBodies) {
+                    const i = b.id;
+                    b.vx += acc1[i].ax * dt * 0.5;
+                    b.vy += acc1[i].ay * dt * 0.5;
+                }
+            }
+
+            function rk4Step(activeBodies, dt) {
+                const state0 = bodies.map(b => ({ x: b.x, y: b.y, vx: b.vx, vy: b.vy }));
+                const k1acc = bodies.map((_, i) => computeAccelerationFor(i, state0));
+                const k1vx = k1acc.map(a => a.ax * dt);
+                const k1vy = k1acc.map(a => a.ay * dt);
+                const k1x = bodies.map((b, i) => b.vx * dt);
+                const k1y = bodies.map((b, i) => b.vy * dt);
+                const state1 = state0.map((s, i) => ({ x: s.x + k1x[i] / 2, y: s.y + k1y[i] / 2, vx: s.vx + k1vx[i] / 2, vy: s.vy + k1vy[i] / 2 }));
+                const k2acc = bodies.map((_, i) => computeAccelerationFor(i, state1));
+                const k2vx = k2acc.map(a => a.ax * dt);
+                const k2vy = k2acc.map(a => a.ay * dt);
+                const k2x = state1.map((s, i) => s.vx * dt);
+                const k2y = state1.map((s, i) => s.vy * dt);
+                const state2 = state0.map((s, i) => ({ x: s.x + k2x[i] / 2, y: s.y + k2y[i] / 2, vx: s.vx + k2vx[i] / 2, vy: s.vy + k2vy[i] / 2 }));
+                const k3acc = bodies.map((_, i) => computeAccelerationFor(i, state2));
+                const k3vx = k3acc.map(a => a.ax * dt);
+                const k3vy = k3acc.map(a => a.ay * dt);
+                const k3x = state2.map((s, i) => s.vx * dt);
+                const k3y = state2.map((s, i) => s.vy * dt);
+                const state3 = state0.map((s, i) => ({ x: s.x + k3x[i], y: s.y + k3y[i], vx: s.vx + k3vx[i], vy: s.vy + k3vy[i] }));
+                const k4acc = bodies.map((_, i) => computeAccelerationFor(i, state3));
+                const k4vx = k4acc.map(a => a.ax * dt);
+                const k4vy = k4acc.map(a => a.ay * dt);
+                const k4x = state3.map((s, i) => s.vx * dt);
+                const k4y = state3.map((s, i) => s.vy * dt);
+                for (let b of activeBodies) {
+                    const i = b.id;
+                    b.vx += (k1vx[i] + 2 * k2vx[i] + 2 * k3vx[i] + k4vx[i]) / 6;
+                    b.vy += (k1vy[i] + 2 * k2vy[i] + 2 * k3vy[i] + k4vy[i]) / 6;
+                    b.x += (k1x[i] + 2 * k2x[i] + 2 * k3x[i] + k4x[i]) / 6;
+                    b.y += (k1y[i] + 2 * k2y[i] + 2 * k3y[i] + k4y[i]) / 6;
+                }
+            }
+
+            // Pollinations.AI 实时调节
+            async function callPollinationsAI() {
+                if (!aiEnabled || !isRunning) return;
+
+                const now = Date.now();
+                if (now - lastAICallTime < AI_CALL_INTERVAL) return;
+                lastAICallTime = now;
+
+                // 构建系统状态描述
+                let stateDesc = "当前系统状态：\n";
+                for (let i = 0; i < bodies.length; i++) {
+                    const b = bodies[i];
+                    stateDesc += `天体${b.name}: 位置(${b.x.toFixed(2)}, ${b.y.toFixed(2)}), 速度(${b.vx.toFixed(2)}, ${b.vy.toFixed(2)}), 质量${b.mass.toFixed(2)}\n`;
+                }
+
+                // 计算能量误差
+                let ke = 0, pe = 0;
+                for (let i = 0; i < bodies.length; i++) {
+                    let b = bodies[i];
+                    ke += 0.5 * b.mass * (b.vx * b.vx + b.vy * b.vy);
+                    for (let j = i + 1; j < bodies.length; j++) {
+                        let o = bodies[j];
+                        let dx = o.x - b.x, dy = o.y - b.y;
+                        let dist = Math.hypot(dx, dy);
+                        if (dist > 0) pe -= G * b.mass * o.mass / dist;
+                    }
+                }
+                let E = ke + pe;
+                if (!initialEnergy) initialEnergy = E;
+                let err = ((E - initialEnergy) / Math.abs(initialEnergy) * 100).toFixed(4);
+                stateDesc += `能量误差: ${err}%\n`;
+                stateDesc += `请分析系统稳定性并给出调节建议，只需返回一个数字因子(0.9-1.1)用于微调所有速度以保持能量守恒。`;
+
+                try {
+                    const response = await fetch('https://text.pollinations.ai/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            messages: [
+                                { role: 'system', content: '你是一个天体物理学家，专门分析三体系统稳定性。请基于能量误差给出速度调节因子，只返回一个数字，如0.98或1.02。' },
+                                { role: 'user', content: stateDesc }
+                            ],
+                            model: 'openai',
+                            temperature: 0.3,
+                            max_tokens: 10
+                        })
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    const aiResponse = data.choices[0].message.content.trim();
+
+                    // 解析返回的数字因子
+                    const factor = parseFloat(aiResponse);
+                    if (!isNaN(factor) && factor > 0.8 && factor < 1.2) {
+                        // 应用调节：微调所有天体速度
+                        for (let b of bodies) {
+                            if (b === draggedBody || b === velocityEditBody) continue;
+                            b.vx *= factor;
+                            b.vy *= factor;
+                        }
+                        console.log(`AI调节因子: ${factor}`);
+                    }
+                } catch (error) {
+                    console.error('AI调用失败:', error);
+                }
+            }
+
+            function updatePhysics(dt) {
+                if (!isRunning) return;
+                const activeBodies = bodies.filter(b => b !== draggedBody && b !== velocityEditBody);
+                if (activeBodies.length === 0) return;
+                switch (integrator) {
+                    case 'euler':
+                        eulerStep(activeBodies, dt * timeScale);
+                        break;
+                    case 'rk4':
+                        rk4Step(activeBodies, dt * timeScale);
+                        break;
+                    case 'symplectic':
+                        symplecticStep(activeBodies, dt * timeScale);
+                        break;
+                }
+                if (simulationMode === 'solid') resolveCollisions();
+                for (let body of bodies) {
+                    if (body === draggedBody || body === velocityEditBody) continue;
+                    const last = body.trail[body.trail.length - 1];
+                    if (!last || Math.hypot(body.x - last.x, body.y - last.y) > 0.5) {
+                        body.trail.push({ x: body.x, y: body.y });
+                        if (body.trail.length > MAX_TRAIL_LENGTH) body.trail.shift();
+                    }
+                }
+                // 调用AI调节
+                callPollinationsAI();
+            }
+
+            function resolveCollisions() {
+                if (simulationMode !== 'solid') return;
+                for (let i = 0; i < bodies.length; i++) {
+                    for (let j = i + 1; j < bodies.length; j++) {
+                        let b1 = bodies[i], b2 = bodies[j];
+                        if (b1 === draggedBody || b2 === draggedBody) continue;
+                        let dx = b2.x - b1.x;
+                        let dy = b2.y - b1.y;
+                        let dist = Math.hypot(dx, dy);
+                        let minDist = b1.radius + b2.radius;
+                        if (dist < minDist && dist > 1e-6) {
+                            let nx = dx / dist;
+                            let ny = dy / dist;
+                            let v1n = b1.vx * nx + b1.vy * ny;
+                            let v2n = b2.vx * nx + b2.vy * ny;
+                            let m1 = b1.mass, m2 = b2.mass;
+                            let v1n_after = ((m1 - m2) * v1n + 2 * m2 * v2n) / (m1 + m2);
+                            let v2n_after = ((m2 - m1) * v2n + 2 * m1 * v1n) / (m1 + m2);
+                            b1.vx += (v1n_after - v1n) * nx;
+                            b1.vy += (v1n_after - v1n) * ny;
+                            b2.vx += (v2n_after - v2n) * nx;
+                            b2.vy += (v2n_after - v2n) * ny;
+                            let overlap = minDist - dist;
+                            b1.x -= nx * overlap * 0.5;
+                            b1.y -= ny * overlap * 0.5;
+                            b2.x += nx * overlap * 0.5;
+                            b2.y += ny * overlap * 0.5;
+                            handleCollision(b1, b2);
+                        }
+                    }
+                }
+            }
+
+            // 工具函数
+            function worldToScreen(x, y) {
+                return {
+                    x: ((x - canvas.width / dpr / 2) * scale + canvas.width / dpr / 2 + offsetX) * dpr,
+                    y: ((y - canvas.height / dpr / 2) * scale + canvas.height / dpr / 2 + offsetY) * dpr
+                };
+            }
+
+            function screenToWorld(x, y) {
+                const canvasX = x * dpr;
+                const canvasY = y * dpr;
+                return {
+                    x: (canvasX / dpr - canvas.width / dpr / 2 - offsetX) / scale + canvas.width / dpr / 2,
+                    y: (canvasY / dpr - canvas.height / dpr / 2 - offsetY) / scale + canvas.height / dpr / 2
+                };
+            }
+
+            function getBodyAtPos(x, y) {
+                const worldPos = screenToWorld(x, y);
+                for (let body of bodies) {
+                    const screenR = body.radius * scale * currentBodyScale;
+                    const hitRadius = Math.max(screenR * 1.5, 15) / scale;
+                    const dist = Math.hypot(worldPos.x - body.x, worldPos.y - body.y);
+                    if (dist < hitRadius) return body;
+                }
+                return null;
+            }
+
+            function formatLabelName(name) {
+                const greekMap = {
+                    'Alpha': 'α', 'Beta': 'β', 'Gamma': 'γ', 'Delta': 'δ', 'Epsilon': 'ε',
+                    'Zeta': 'ζ', 'Eta': 'η', 'Theta': 'θ', 'Iota': 'ι', 'Kappa': 'κ',
+                    'Lambda': 'λ', 'Mu': 'μ', 'Nu': 'ν', 'Xi': 'ξ', 'Omicron': 'ο',
+                    'Pi': 'π', 'Rho': 'ρ', 'Sigma': 'σ', 'Tau': 'τ', 'Upsilon': 'υ',
+                    'Phi': 'φ', 'Chi': 'χ', 'Psi': 'ψ', 'Omega': 'ω'
+                };
+                const match = name.match(/^([A-Za-z]+)(\d*)$/);
+                if (match) {
+                    const prefix = match[1];
+                    const number = match[2];
+                    const capPrefix = prefix.charAt(0).toUpperCase() + prefix.slice(1).toLowerCase();
+                    const greek = greekMap[capPrefix] || prefix;
+                    return greek + number;
+                }
+                const chineseRegex = /[\u4e00-\u9fff]/;
+                if (chineseRegex.test(name)) {
+                    let chineseChars = name.match(/[\u4e00-\u9fff]/g) || [];
+                    if (chineseChars.length > 2) return name.slice(0, 2) + '…';
+                    return name;
+                } else {
+                    if (name.length > 3) return name.slice(0, 3) + '…';
+                    return name;
+                }
+            }
+
+            window.closeDistanceDialog = function() {
+                highlightedLine = null;
+                document.getElementById('distanceDialog').classList.remove('show');
+            };
+
+            function onCanvasClick(e) {
+                if (!showDistanceLines) return;
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const canvasX = x * dpr;
+                const canvasY = y * dpr;
+                const threshold = 25 * dpr;
+                let closest = null;
+                let minDist = Infinity;
+                for (let i = 0; i < bodies.length; i++) {
+                    for (let j = i + 1; j < bodies.length; j++) {
+                        const b1 = bodies[i];
+                        const b2 = bodies[j];
+                        const p1 = worldToScreen(b1.x, b1.y);
+                        const p2 = worldToScreen(b2.x, b2.y);
+                        const dist = pointToLineDistance({ x: canvasX, y: canvasY }, p1, p2);
+                        if (dist < threshold && dist < minDist) {
+                            minDist = dist;
+                            closest = { i, j };
+                        }
+                    }
+                }
+                if (closest) {
+                    highlightedLine = closest;
+                    const b1 = bodies[closest.i];
+                    const b2 = bodies[closest.j];
+                    const dist = Math.hypot(b1.x - b2.x, b1.y - b2.y).toFixed(2);
+                    document.getElementById('distanceText').innerHTML = `${b1.name} 与 ${b2.name} 的距离：<span>${dist} 光年</span>`;
+                    document.getElementById('distanceDialog').classList.add('show');
+                } else {
+                    closeDistanceDialog();
+                }
+            }
+
+            function pointToLineDistance(p, a, b) {
+                const ab = { x: b.x - a.x, y: b.y - a.y };
+                const ap = { x: p.x - a.x, y: p.y - a.y };
+                const t = (ab.x * ap.x + ab.y * ap.y) / (ab.x * ab.x + ab.y * ab.y);
+                if (t < 0) return Math.hypot(ap.x, ap.y);
+                if (t > 1) return Math.hypot(p.x - b.x, p.y - b.y);
+                const proj = { x: a.x + ab.x * t, y: a.y + ab.y * t };
+                return Math.hypot(p.x - proj.x, p.y - proj.y);
+            }
+
+            function drawForceArrows() {
+                if (!showForceArrows) return;
+                for (let body of bodies) {
+                    let fx = 0, fy = 0;
+                    for (let other of bodies) {
+                        if (other === body) continue;
+                        const dx = other.x - body.x;
+                        const dy = other.y - body.y;
+                        const dist = Math.hypot(dx, dy);
+                        if (dist > 0) {
+                            const force = G * body.mass * other.mass / (dist * dist);
+                            fx += force * dx / dist;
+                            fy += force * dy / dist;
+                        }
+                    }
+                    const forceMag = Math.hypot(fx, fy);
+                    if (forceMag < 1e-6) continue;
+                    const start = worldToScreen(body.x, body.y);
+                    const r = Math.max(body.radius * scale * currentBodyScale, 3);
+                    const angle = Math.atan2(fy, fx);
+                    const offset = r + 5;
+                    const startX = start.x + Math.cos(angle) * offset;
+                    const startY = start.y + Math.sin(angle) * offset;
+                    const baseScale = 0.05;
+                    const maxLen = 200;
+                    let len = Math.min(forceMag * baseScale * dpr, maxLen);
+                    const endX = startX + Math.cos(angle) * len;
+                    const endY = startY + Math.sin(angle) * len;
+                    ctx.save();
+                    ctx.strokeStyle = body.color;
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(startX, startY);
+                    ctx.lineTo(endX, endY);
+                    ctx.stroke();
+                    const arrowSize = 15;
+                    const arrowAngle = angle;
+                    const arrowX = endX - arrowSize * 0.5 * Math.cos(arrowAngle);
+                    const arrowY = endY - arrowSize * 0.5 * Math.sin(arrowAngle);
+                    ctx.fillStyle = body.color;
+                    ctx.beginPath();
+                    ctx.moveTo(endX, endY);
+                    ctx.lineTo(arrowX - arrowSize * 0.4 * Math.sin(arrowAngle), arrowY + arrowSize * 0.4 * Math.cos(arrowAngle));
+                    ctx.lineTo(arrowX + arrowSize * 0.4 * Math.sin(arrowAngle), arrowY - arrowSize * 0.4 * Math.cos(arrowAngle));
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+
+            function updateSpeedFromRange(val) {
+                timeScale = parseFloat(val);
+                document.getElementById('speedInput').value = timeScale.toFixed(1);
+            }
+            function updateSpeedFromInput(val) {
+                let v = parseFloat(val);
+                if (isNaN(v)) v = 1.0;
+                v = Math.min(400, Math.max(0, v));
+                timeScale = v;
+                document.getElementById('speedRange').value = v;
+                document.getElementById('speedInput').value = v.toFixed(1);
+            }
+
+            function updateG(val) {
+                G = parseFloat(val);
+                document.getElementById('gValue').textContent = G.toFixed(1);
+                document.querySelector('input[oninput="updateG(this.value)"]').value = G;
+            }
+
+            function showToast(msg) {
+                const toast = document.getElementById('infoToast');
+                toast.textContent = msg;
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 2000);
+            }
+
+            document.addEventListener('click', (e) => {
+                if (menuOpen && !e.target.closest('.dropdown-menu') && !e.target.closest('.menu-trigger')) {
+                    toggleMenu();
+                }
+            });
+
+            function computeSystemStats(resetInitial = false) {
+                let ke = 0, pe = 0, angMom = 0, px = 0, py = 0;
+                for (let i = 0; i < bodies.length; i++) {
+                    let b = bodies[i];
+                    ke += 0.5 * b.mass * (b.vx * b.vx + b.vy * b.vy);
+                    px += b.mass * b.vx;
+                    py += b.mass * b.vy;
+                    angMom += b.mass * (b.x * b.vy - b.y * b.vx);
+                    for (let j = i + 1; j < bodies.length; j++) {
+                        let o = bodies[j];
+                        let dx = o.x - b.x, dy = o.y - b.y;
+                        let dist = Math.hypot(dx, dy);
+                        if (dist > 0) pe -= G * b.mass * o.mass / dist;
+                    }
+                }
+                let E = ke + pe;
+                let totalMass = bodies.reduce((sum, b) => sum + b.mass, 0);
+                let comVelX = px / totalMass;
+                let comVelY = py / totalMass;
+                let comSpeed = Math.hypot(comVelX, comVelY);
+                let momentumMag = Math.hypot(px, py);
+                if (resetInitial) initialEnergy = E;
+                if (preset === 'research') {
+                    document.getElementById('totalEnergy').textContent = E.toFixed(2);
+                    let err = initialEnergy ? ((E - initialEnergy) / Math.abs(initialEnergy) * 100) : 0;
+                    document.getElementById('energyError').textContent = err.toFixed(4) + '%';
+                    document.getElementById('totalAngularMomentum').textContent = angMom.toFixed(2);
+                    document.getElementById('totalMomentum').textContent = momentumMag.toFixed(2);
+                    document.getElementById('comVelocity').textContent = comSpeed.toFixed(2);
+                    if (initialEnergy && Math.abs(initialEnergy) > 1e-12) {
+                        energyErrorHistory.push(err);
+                        if (energyErrorHistory.length > 100) energyErrorHistory.shift();
+                    }
+                    drawErrorCurve();
+                }
+                return E;
+            }
+
+            function drawErrorCurve() {
+                const canvas = document.getElementById('errorCanvas');
+                if (!canvas) return;
+                const w = canvas.width, h = canvas.height;
+                const ctxErr = canvas.getContext('2d');
+                ctxErr.clearRect(0, 0, w, h);
+                if (energyErrorHistory.length < 2) return;
+                ctxErr.strokeStyle = '#0f0';
+                ctxErr.lineWidth = 1.5;
+                ctxErr.beginPath();
+                const maxErr = Math.max(...energyErrorHistory.map(Math.abs)) * 1.1 || 1;
+                const stepX = w / (energyErrorHistory.length - 1);
+                for (let i = 0; i < energyErrorHistory.length; i++) {
+                    let x = i * stepX;
+                    let y = h / 2 - (energyErrorHistory[i] / maxErr) * (h / 2 - 2);
+                    if (i === 0) ctxErr.moveTo(x, y);
+                    else ctxErr.lineTo(x, y);
+                }
+                ctxErr.stroke();
+            }
+
+            // 特殊解加载
+            function loadSpecialSolution(type) {
+                bodies = [];
+                const cx = canvas.width / dpr / 2;
+                const cy = canvas.height / dpr / 2;
+
+                switch (type) {
+                    case 'figure8': {
+                        const sf = 30;
+                        const x1 = 0.97000436, y1 = -0.24308753;
+                        const x2 = -0.97000436, y2 = 0.24308753;
+                        const x3 = 0, y3 = 0;
+                        const vx1 = 0.466203685, vy1 = 0.43236573;
+                        const vx2 = 0.466203685, vy2 = 0.43236573;
+                        const vx3 = -0.93240737, vy3 = -0.86473146;
+                        const m = 1.0;
+
+                        bodies.push(new Body(cx + x1 * sf, cy + y1 * sf, m, getRandomColor(), 0));
+                        bodies.push(new Body(cx + x2 * sf, cy + y2 * sf, m, getRandomColor(), 1));
+                        bodies.push(new Body(cx + x3 * sf, cy + y3 * sf, m, getRandomColor(), 2));
+
+                        bodies[0].vx = vx1 * sf;
+                        bodies[0].vy = vy1 * sf;
+                        bodies[1].vx = vx2 * sf;
+                        bodies[1].vy = vy2 * sf;
+                        bodies[2].vx = vx3 * sf;
+                        bodies[2].vy = vy3 * sf;
+                        break;
+                    }
+                    case '2022NA': {
+                        const sf = 35;
+                        const m1 = 0.5312, m2 = 2.2837, m3 = 1.0;
+                        const x1 = -0.97138, y1 = 0;
+                        const x2 = 1.0, y2 = 0;
+                        const x3 = 0, y3 = 0;
+                        const vx1 = 0, vy1 = -1.37584;
+                        const vx2 = 0, vy2 = -0.34528;
+                        const vx3 = 0, vy3 = 1.51936;
+
+                        bodies.push(new Body(cx + x1 * sf, cy + y1 * sf, m1, getRandomColor(), 0));
+                        bodies.push(new Body(cx + x2 * sf, cy + y2 * sf, m2, getRandomColor(), 1));
+                        bodies.push(new Body(cx + x3 * sf, cy + y3 * sf, m3, getRandomColor(), 2));
+
+                        bodies[0].vx = vx1 * sf;
+                        bodies[0].vy = vy1 * sf;
+                        bodies[1].vx = vx2 * sf;
+                        bodies[1].vy = vy2 * sf;
+                        bodies[2].vx = vx3 * sf;
+                        bodies[2].vy = vy3 * sf;
+                        break;
+                    }
+                    case 'brouckeA15': {
+                        const sf = 20;
+                        const m = 1.0;
+                        const x1 = -1.18897, y1 = 0;
+                        const x2 = 3.82019, y2 = 0;
+                        const x3 = -2.63122, y3 = 0;
+                        const vx1 = 0, vy1 = 0.804212;
+                        const vx2 = 0, vy2 = 0.0212795;
+                        const vx3 = 0, vy3 = -0.825492;
+
+                        bodies.push(new Body(cx + x1 * sf, cy + y1 * sf, m, getRandomColor(), 0));
+                        bodies.push(new Body(cx + x2 * sf, cy + y2 * sf, m, getRandomColor(), 1));
+                        bodies.push(new Body(cx + x3 * sf, cy + y3 * sf, m, getRandomColor(), 2));
+
+                        bodies[0].vx = vx1 * sf;
+                        bodies[0].vy = vy1 * sf;
+                        bodies[1].vx = vx2 * sf;
+                        bodies[1].vy = vy2 * sf;
+                        bodies[2].vx = vx3 * sf;
+                        bodies[2].vy = vy3 * sf;
+                        break;
+                    }
+                    case 'freefall': {
+                        const sf = 40;
+                        const m1 = 1.0, m2 = 0.8, m3 = 0.6;
+                        const x1 = -0.5, y1 = 0;
+                        const x2 = 0.5, y2 = 0;
+                        const x3 = 0.163578, y3 = 0.55197;
+
+                        bodies.push(new Body(cx + x1 * sf, cy + y1 * sf, m1, getRandomColor(), 0));
+                        bodies.push(new Body(cx + x2 * sf, cy + y2 * sf, m2, getRandomColor(), 1));
+                        bodies.push(new Body(cx + x3 * sf, cy + y3 * sf, m3, getRandomColor(), 2));
+
+                        bodies[0].vx = 0;
+                        bodies[0].vy = 0;
+                        bodies[1].vx = 0;
+                        bodies[1].vy = 0;
+                        bodies[2].vx = 0;
+                        bodies[2].vy = 0;
+                        break;
+                    }
+                    default: {
+                        const m = 1.0;
+                        const a = 60;
+                        const r = a / Math.sqrt(3);
+                        const omega = Math.sqrt(3 * G * m / (a * a * a));
+                        const v = omega * r;
+                        const angle0 = 0, angle1 = 2 * Math.PI / 3, angle2 = 4 * Math.PI / 3;
+                        bodies.push(new Body(cx + r * Math.cos(angle0), cy + r * Math.sin(angle0), m, getRandomColor(), 0));
+                        bodies.push(new Body(cx + r * Math.cos(angle1), cy + r * Math.sin(angle1), m, getRandomColor(), 1));
+                        bodies.push(new Body(cx + r * Math.cos(angle2), cy + r * Math.sin(angle2), m, getRandomColor(), 2));
+                        bodies[0].vx = -v * Math.sin(angle0);
+                        bodies[0].vy = v * Math.cos(angle0);
+                        bodies[1].vx = -v * Math.sin(angle1);
+                        bodies[1].vy = v * Math.cos(angle1);
+                        bodies[2].vx = -v * Math.sin(angle2);
+                        bodies[2].vy = v * Math.cos(angle2);
+                        break;
+                    }
+                }
+
+                scale = 1;
+                offsetX = 0;
+                offsetY = 0;
+                timeScale = 1.0;
+                G = 1.0;
+                updateSpeedFromRange(1.0);
+                updateG(1.0);
+                followedBodyId = null;
+                highlightedLine = null;
+                updateBodiesList();
+                updateMenuTitle();
+                showToast('已加载特殊解');
+                setStepSize(0.01);
+                if (integrator !== 'symplectic') {
+                    setIntegrator('symplectic');
+                    document.getElementById('integratorSelect').value = 'symplectic';
+                }
+                computeSystemStats(true);
+            }
+
+            function exportConfig() {
+                const config = {
+                    bodies: bodies.map(b => ({
+                        x: b.x, y: b.y, vx: b.vx, vy: b.vy, mass: b.mass, color: b.color, name: b.name
+                    })),
+                    G: G,
+                    timeScale: timeScale,
+                    stepSize: stepSize,
+                    integrator: integrator,
+                    preset: preset
+                };
+                const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'simulation_config.json';
+                a.click();
+                URL.revokeObjectURL(url);
+                showToast('配置已导出');
+            }
+
+            function importConfig(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const config = JSON.parse(e.target.result);
+                        bodies = [];
+                        config.bodies.forEach((b, i) => {
+                            let body = new Body(b.x, b.y, b.mass, b.color, i);
+                            body.vx = b.vx;
+                            body.vy = b.vy;
+                            body.name = b.name || generateBodyName(i);
+                            bodies.push(body);
+                        });
+                        G = config.G || 1.0;
+                        timeScale = config.timeScale || 1.0;
+                        stepSize = config.stepSize || 0.01;
+                        integrator = config.integrator || 'symplectic';
+                        preset = config.preset || 'education';
+                        updateSpeedFromRange(timeScale);
+                        updateG(G);
+                        document.getElementById('integratorSelect').value = integrator;
+                        document.getElementById('stepSizeSelect').value = stepSize;
+                        setPreset(preset);
+                        updateBodiesList();
+                        updateMenuTitle();
+                        computeSystemStats(true);
+                        showToast('配置已导入');
+                    } catch (err) {
+                        showToast('导入失败：' + err);
+                    }
+                };
+                reader.readAsText(file);
+            }
+
+            // 触摸事件处理
+            let touchStartTime = 0;
+            let touchStartBody = null;
+            let touchStartPos = { x: 0, y: 0 };
+            let isLongPressTriggered = false;
+            const LONG_PRESS_DELAY = 500;
+
+            function handleTouchStart(e) {
+                e.preventDefault();
+                const touches = e.touches;
+                if (isDraggingVelocity) return;
+
+                if (touches.length === 1) {
+                    const touch = touches[0];
+                    touchStartPos = { x: touch.clientX, y: touch.clientY };
+                    touchStartTime = Date.now();
+                    isLongPressTriggered = false;
+
+                    const body = getBodyAtPos(touch.clientX, touch.clientY);
+                    touchStartBody = body;
+
+                    if (body) {
+                        velocityLongPressTimer = setTimeout(() => {
+                            isLongPressTriggered = true;
+                            enterVelocityEdit(body);
+                            touchStartBody = null;
+                        }, LONG_PRESS_DELAY);
+                    } else {
+                        exitVelocityEdit();
+                        isPanning = true;
+                        lastTouchCenter = { x: touch.clientX, y: touch.clientY };
+                    }
+                } else if (touches.length === 2) {
+                    clearTimeout(velocityLongPressTimer);
+                    touchStartBody = null;
+                    exitVelocityEdit();
+
+                    isPanning = true;
+                    const dx = touches[0].clientX - touches[1].clientX;
+                    const dy = touches[0].clientY - touches[1].clientY;
+                    lastTouchDistance = Math.hypot(dx, dy);
+                    lastTouchCenter = {
+                        x: (touches[0].clientX + touches[1].clientX) / 2,
+                        y: (touches[0].clientY + touches[1].clientY) / 2
+                    };
+                }
+            }
+
+            function handleTouchMove(e) {
+                e.preventDefault();
+                const touches = e.touches;
+
+                if (isDraggingVelocity && velocityEditBody && touches.length === 1) {
+                    const touch = touches[0];
+                    const worldPos = screenToWorld(touch.clientX, touch.clientY);
+                    const dx = worldPos.x - velocityEditBody.x;
+                    const dy = worldPos.y - velocityEditBody.y;
+                    velocityEditBody.vx = dx / VELOCITY_WORLD_FACTOR;
+                    velocityEditBody.vy = dy / VELOCITY_WORLD_FACTOR;
+                    updateVelocityInputsFromBody(velocityEditBody);
+                    showVelocityTip(touch.clientX, touch.clientY, velocityEditBody);
+                    return;
+                }
+
+                if (isDragging && draggedBody && touches.length === 1) {
+                    const worldPos = screenToWorld(touches[0].clientX, touches[0].clientY);
+                    draggedBody.x = worldPos.x;
+                    draggedBody.y = worldPos.y;
+                    draggedBody.vx = 0;
+                    draggedBody.vy = 0;
+                    draggedBody.trail = [];
+                    return;
+                }
+
+                if (isPanning) {
+                    if (touches.length === 1) {
+                        offsetX += touches[0].clientX - lastTouchCenter.x;
+                        offsetY += touches[0].clientY - lastTouchCenter.y;
+                        lastTouchCenter = { x: touches[0].clientX, y: touches[0].clientY };
+                    } else if (touches.length === 2) {
+                        const dx = touches[0].clientX - touches[1].clientX;
+                        const dy = touches[0].clientY - touches[1].clientY;
+                        const dist = Math.hypot(dx, dy);
+                        if (lastTouchDistance > 0) {
+                            const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale * (dist / lastTouchDistance)));
+                            const center = {
+                                x: (touches[0].clientX + touches[1].clientX) / 2,
+                                y: (touches[0].clientY + touches[1].clientY) / 2
+                            };
+                            offsetX -= (center.x - canvas.width / dpr / 2 - offsetX) * (newScale / scale - 1);
+                            offsetY -= (center.y - canvas.height / dpr / 2 - offsetY) * (newScale / scale - 1);
+                            scale = newScale;
+                            lastTouchCenter = center;
+                        }
+                        lastTouchDistance = dist;
+                    }
+                }
+
+                if (touches.length === 1 && touchStartBody && !isLongPressTriggered) {
+                    const dx = touches[0].clientX - touchStartPos.x;
+                    const dy = touches[0].clientY - touchStartPos.y;
+                    if (Math.hypot(dx, dy) > 12) {
+                        clearTimeout(velocityLongPressTimer);
+                        if (!isDragging && !isDraggingVelocity) {
+                            isDragging = true;
+                            draggedBody = touchStartBody;
+                        }
+                        touchStartBody = null;
+                    }
+                }
+            }
+
+            function handleTouchEnd(e) {
+                e.preventDefault();
+                clearTimeout(velocityLongPressTimer);
+                if (touchStartBody && !isLongPressTriggered && !isDragging) {
+                    const rect = canvas.getBoundingClientRect();
+                    const x = e.changedTouches[0].clientX - rect.left;
+                    const y = e.changedTouches[0].clientY - rect.top;
+                    onCanvasClick({ clientX: x, clientY: y });
+                }
+                if (isDraggingVelocity) {
+                    isDraggingVelocity = false;
+                } else {
+                    isDragging = false;
+                    draggedBody = null;
+                }
+                isPanning = false;
+                lastTouchDistance = 0;
+                touchStartBody = null;
+                document.getElementById('velocityTip').style.display = 'none';
+            }
+
+            // 鼠标事件
+            let mouseDown = false;
+            let mouseDownBody = null;
+            let mouseLongPressTimer = null;
+            let mouseIsLongPress = false;
+            let lastMousePos = { x: 0, y: 0 };
+
+            canvas.addEventListener('mousedown', (e) => {
+                mouseDown = true;
+                mouseIsLongPress = false;
+                const body = getBodyAtPos(e.clientX, e.clientY);
+                mouseDownBody = body;
+                if (body) {
+                    mouseLongPressTimer = setTimeout(() => {
+                        mouseIsLongPress = true;
+                        enterVelocityEdit(body);
+                        mouseDownBody = null;
+                    }, LONG_PRESS_DELAY);
+                } else {
+                    exitVelocityEdit();
+                    isPanning = true;
+                    lastMousePos = { x: e.clientX, y: e.clientY };
+                }
+            });
+
+            canvas.addEventListener('mousemove', (e) => {
+                if (!mouseDown) return;
+                if (isDraggingVelocity && velocityEditBody) {
+                    const worldPos = screenToWorld(e.clientX, e.clientY);
+                    const dx = worldPos.x - velocityEditBody.x;
+                    const dy = worldPos.y - velocityEditBody.y;
+                    velocityEditBody.vx = dx / VELOCITY_WORLD_FACTOR;
+                    velocityEditBody.vy = dy / VELOCITY_WORLD_FACTOR;
+                    updateVelocityInputsFromBody(velocityEditBody);
+                    showVelocityTip(e.clientX, e.clientY, velocityEditBody);
+                    return;
+                }
+                if (isDragging && draggedBody) {
+                    const worldPos = screenToWorld(e.clientX, e.clientY);
+                    draggedBody.x = worldPos.x;
+                    draggedBody.y = worldPos.y;
+                    draggedBody.vx = 0;
+                    draggedBody.vy = 0;
+                    draggedBody.trail = [];
+                    return;
+                }
+                if (isPanning) {
+                    offsetX += e.clientX - lastMousePos.x;
+                    offsetY += e.clientY - lastMousePos.y;
+                    lastMousePos = { x: e.clientX, y: e.clientY };
+                }
+                if (mouseDownBody && !mouseIsLongPress) {
+                    const dx = e.clientX - lastMousePos.x;
+                    const dy = e.clientY - lastMousePos.y;
+                    if (Math.hypot(dx, dy) > 8) {
+                        clearTimeout(mouseLongPressTimer);
+                        if (!isDragging && !isDraggingVelocity) {
+                            isDragging = true;
+                            draggedBody = mouseDownBody;
+                        }
+                        mouseDownBody = null;
+                    }
+                }
+            });
+
+            canvas.addEventListener('mouseup', (e) => {
+                mouseDown = false;
+                clearTimeout(mouseLongPressTimer);
+                if (isDraggingVelocity) {
+                    isDraggingVelocity = false;
+                } else {
+                    isDragging = false;
+                    draggedBody = null;
+                }
+                isPanning = false;
+                document.getElementById('velocityTip').style.display = 'none';
+                mouseDownBody = null;
+                if (!isDragging && !mouseIsLongPress && !isPanning && !menuOpen) {
+                    onCanvasClick(e);
+                }
+            });
+
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const factor = e.deltaY > 0 ? 0.9 : 1.1;
+                const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale * factor));
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                offsetX -= (x - canvas.width / dpr / 2 - offsetX) * (newScale / scale - 1);
+                offsetY -= (y - canvas.height / dpr / 2 - offsetY) * (newScale / scale - 1);
+                scale = newScale;
+            }, { passive: false });
+
+            canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+            canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+            canvas.addEventListener('touchend', handleTouchEnd);
+            canvas.addEventListener('touchcancel', handleTouchEnd);
+
+            function resize() {
+                dpr = window.devicePixelRatio || 1;
+                canvas.width = window.innerWidth * dpr;
+                canvas.height = window.innerHeight * dpr;
+                canvas.style.width = window.innerWidth + 'px';
+                canvas.style.height = window.innerHeight + 'px';
+            }
+            window.addEventListener('resize', resize);
+
+            function enterVelocityEdit(body) {
+                if (velocityEditBody) return;
+                velocityEditBody = body;
+                isDraggingVelocity = true;
+                if (isRunning) toggleSimulation();
+                showToast(`编辑 ${body.name} 速度`);
+            }
+
+            function exitVelocityEdit() {
+                if (velocityEditBody) {
+                    velocityEditBody = null;
+                    isDraggingVelocity = false;
+                    document.getElementById('velocityTip').style.display = 'none';
+                }
+            }
+
+            function showVelocityTip(x, y, body) {
+                const tip = document.getElementById('velocityTip');
+                const speed = Math.hypot(body.vx, body.vy);
+                let angle = Math.atan2(body.vy, body.vx) * 180 / Math.PI;
+                if (angle < 0) angle += 360;
+                tip.textContent = `速度: ${speed.toFixed(2)}  角度: ${angle.toFixed(1)}°`;
+                tip.style.left = x + 'px';
+                tip.style.top = (y - 30) + 'px';
+                tip.style.display = 'block';
+            }
+
+            function drawVelocityArrow(body) {
+                const start = worldToScreen(body.x, body.y);
+                const tipWorldX = body.x + body.vx * VELOCITY_WORLD_FACTOR;
+                const tipWorldY = body.y + body.vy * VELOCITY_WORLD_FACTOR;
+                const tip = worldToScreen(tipWorldX, tipWorldY);
+                if (Math.hypot(body.vx, body.vy) < 0.001) {
+                    ctx.beginPath();
+                    ctx.arc(start.x, start.y, 5, 0, 2 * Math.PI);
+                    ctx.fillStyle = 'white';
+                    ctx.fill();
+                    return;
+                }
+                ctx.beginPath();
+                ctx.moveTo(start.x, start.y);
+                ctx.lineTo(tip.x, tip.y);
+                ctx.strokeStyle = '#FFD700';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                const angle = Math.atan2(tip.y - start.y, tip.x - start.x);
+                const arrowSize = 15;
+                const arrowX = tip.x - arrowSize * 0.3 * Math.cos(angle);
+                const arrowY = tip.y - arrowSize * 0.3 * Math.sin(angle);
+                ctx.fillStyle = '#FFD700';
+                ctx.beginPath();
+                ctx.moveTo(tip.x, tip.y);
+                ctx.lineTo(arrowX - arrowSize * 0.5 * Math.sin(angle), arrowY + arrowSize * 0.5 * Math.cos(angle));
+                ctx.lineTo(arrowX + arrowSize * 0.5 * Math.sin(angle), arrowY - arrowSize * 0.5 * Math.cos(angle));
+                ctx.closePath();
+                ctx.fill();
+                const speed = Math.hypot(body.vx, body.vy);
+                let deg = Math.atan2(body.vy, body.vx) * 180 / Math.PI;
+                if (deg < 0) deg += 360;
+                ctx.font = '12px Arial';
+                ctx.fillStyle = 'white';
+                ctx.shadowColor = 'black';
+                ctx.shadowBlur = 4;
+                ctx.fillText(`${speed.toFixed(2)} @ ${deg.toFixed(0)}°`, tip.x + 10, tip.y - 10);
+                ctx.shadowBlur = 0;
+            }
+
+            document.getElementById('menuTrigger').addEventListener('click', (e) => {
+                e.stopPropagation();
+                toggleMenu();
+            });
+
+            function toggleMenu() {
+                menuOpen = !menuOpen;
+                const menu = document.getElementById('dropdownMenu');
+                menu.classList.toggle('show', menuOpen);
+                if (!menuOpen) {
+                    closeColorPicker();
+                }
+            }
+
+            function toggleSimulation() {
+                isRunning = !isRunning;
+                updatePlayButton();
+            }
+
+            function updatePlayButton() {
+                const btn = document.getElementById('playBtn');
+                const icon = document.getElementById('playIcon');
+                const text = document.getElementById('playText');
+                if (isRunning) {
+                    btn.classList.remove('paused');
+                    icon.innerHTML = '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>';
+                    text.textContent = '暂停';
+                } else {
+                    btn.classList.add('paused');
+                    icon.innerHTML = '<path d="M8 5v14l11-7z"/>';
+                    text.textContent = '继续';
+                }
+                exitVelocityEdit();
+            }
+
+            function setPreset(newPreset) {
+                preset = newPreset;
+                document.getElementById('presetEdu').classList.toggle('active', preset === 'education');
+                document.getElementById('presetResearch').classList.toggle('active', preset === 'research');
+                document.getElementById('energyPanel').style.display = preset === 'research' ? 'block' : 'none';
+                document.getElementById('precisionControl').style.display = preset === 'research' ? 'flex' : 'none';
+                document.getElementById('aiToggleRow').style.display = preset === 'research' ? 'flex' : 'none';
+                computeSystemStats(true);
+                showToast(preset === 'education' ? '基础模式' : '高级模式');
+            }
+
+            function setMode(mode) {
+                simulationMode = mode;
+                document.getElementById('modeMass').classList.toggle('active', mode === 'mass');
+                document.getElementById('modeSolid').classList.toggle('active', mode === 'solid');
+                bodies.forEach(b => b.radius = b.calculateRadius());
+                updateBodiesList();
+                showToast(mode === 'mass' ? '质点模式' : '质体模式 (碰撞处理)');
+            }
+
+            function setIntegrator(value) {
+                integrator = value;
+                let name = { 'euler': '欧拉法', 'rk4': 'RK4', 'symplectic': '辛算法(二阶)' }[value] || value;
+                showToast(`积分器: ${name}`);
+            }
+
+            function setStepSize(value) {
+                stepSize = parseFloat(value);
+                showToast(`时间步长: ${stepSize}`);
+            }
+
+            function toggleSolutions() {
+                solutionsExpanded = !solutionsExpanded;
+                const header = document.getElementById('solutionsHeader');
+                const content = document.getElementById('specialSolutions');
+                header.classList.toggle('expanded', solutionsExpanded);
+                content.classList.toggle('expanded', solutionsExpanded);
+            }
+
+            function toggleDistanceLines() {
+                showDistanceLines = !showDistanceLines;
+                document.getElementById('distanceToggle').classList.toggle('active', showDistanceLines);
+                if (!showDistanceLines) {
+                    highlightedLine = null;
+                    document.getElementById('distanceDialog').classList.remove('show');
+                }
+                showToast(showDistanceLines ? '距离显示已开启' : '距离显示已关闭');
+            }
+
+            function toggleForceArrows() {
+                showForceArrows = !showForceArrows;
+                document.getElementById('forceArrowToggle').classList.toggle('active', showForceArrows);
+                showToast(showForceArrows ? '受力箭头已开启' : '受力箭头已关闭');
+            }
+
+            function toggleAI() {
+                aiEnabled = !aiEnabled;
+                document.getElementById('aiToggle').classList.toggle('active', aiEnabled);
+                showToast(aiEnabled ? 'AI实时调节开启 (demo)' : 'AI实时调节关闭');
+                if (aiEnabled) {
+                    lastAICallTime = 0; // 重置计时
+                }
+            }
+
+            function updateBodiesList() {
+                const list = document.getElementById('bodiesList');
+                list.innerHTML = '';
+
+                bodies.forEach(body => {
+                    const speed = Math.hypot(body.vx, body.vy);
+                    let angle = Math.atan2(body.vy, body.vx) * 180 / Math.PI;
+                    if (angle < 0) angle += 360;
+
+                    const card = document.createElement('div');
+                    card.className = 'body-card';
+                    card.innerHTML = `
+                        <div class="body-actions">
+                            <button class="follow-btn ${followedBodyId === body.id ? 'following' : ''}" onclick="toggleFollow(${body.id})">
+                                <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.7 7.6 1 12c1.7 4.4 6 7.5 11 7.5s9.3-3.1 11-7.5c-1.7-4.4-6-7.5-11-7.5zM12 17c-2.8 0-5-2.2-5-5s2.2-5 5-5 5 2.2 5 5-2.2 5-5 5zm0-8c-1.7 0-3 1.3-3 3s1.3 3 3 3 3-1.3 3-3-1.3-3-3-3z"/></svg>
+                            </button>
+                            <button class="delete-body" onclick="removeBody(${body.id})">
+                                <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                            </button>
+                        </div>
+                        <div class="body-header">
+                            <div class="body-color-picker" style="background-color: ${body.color}; color: ${body.color}" onclick="openColorPicker(${body.id})"></div>
+                            <input type="text" class="body-name-input" value="${body.name}" onchange="updateBodyName(${body.id}, this.value)" maxlength="6">
+                        </div>
+                        <div class="slider-control slider-control-single">
+                            <div class="slider-label">
+                                <span>质量 (10³⁰ kg)</span>
+                                <input type="number" class="slider-value-input mass-input-${body.id}" value="${body.mass}" step="0.1" min="0.1" max="100" oninput="updateBodyMass(${body.id}, this.value)">
+                            </div>
+                            <input type="range" class="mass-slider-${body.id}" min="0.1" max="100" step="0.1" value="${body.mass}" oninput="updateBodyMass(${body.id}, this.value)">
+                        </div>
+                        <div class="velocity-panel">
+                            <div class="velocity-title">初速度</div>
+                            <div class="slider-control slider-control-single">
+                                <div class="slider-label">
+                                    <span>大小 (单位)</span>
+                                    <input type="number" class="slider-value-input speed-input-${body.id}" value="${speed.toFixed(2)}" step="0.1" min="0" max="100" oninput="updateBodyVelocityFromInput(${body.id}, parseFloat(this.value)||0, parseFloat(document.querySelector('.angle-input-${body.id}').value)||0)">
+                                </div>
+                                <input type="range" class="speed-slider-${body.id}" min="0" max="100" step="0.1" value="${speed.toFixed(2)}" oninput="updateBodyVelocityFromInput(${body.id}, parseFloat(this.value), parseFloat(document.querySelector('.angle-input-${body.id}').value)||0)">
+                            </div>
+                            <div class="slider-control slider-control-single">
+                                <div class="slider-label">
+                                    <span>角度 (°)</span>
+                                    <input type="number" class="slider-value-input angle-input-${body.id}" value="${angle.toFixed(1)}" step="1" min="0" max="360" oninput="updateBodyVelocityFromInput(${body.id}, parseFloat(document.querySelector('.speed-input-${body.id}').value)||0, parseFloat(this.value)||0)">
+                                </div>
+                                <input type="range" class="angle-slider-${body.id}" min="0" max="360" step="1" value="${angle.toFixed(1)}" oninput="updateBodyVelocityFromInput(${body.id}, parseFloat(document.querySelector('.speed-input-${body.id}').value)||0, parseFloat(this.value))">
+                            </div>
+                        </div>
+                    `;
+                    list.appendChild(card);
+
+                    // 同步滑块与输入框
+                    const speedSlider = card.querySelector(`.speed-slider-${body.id}`);
+                    const speedInput = card.querySelector(`.speed-input-${body.id}`);
+                    const angleSlider = card.querySelector(`.angle-slider-${body.id}`);
+                    const angleInput = card.querySelector(`.angle-input-${body.id}`);
+
+                    speedSlider.addEventListener('input', () => {
+                        speedInput.value = speedSlider.value;
+                        updateBodyVelocityFromInput(body.id, parseFloat(speedSlider.value), parseFloat(angleInput.value));
+                    });
+                    speedInput.addEventListener('input', () => {
+                        speedSlider.value = speedInput.value;
+                        updateBodyVelocityFromInput(body.id, parseFloat(speedInput.value), parseFloat(angleInput.value));
+                    });
+
+                    angleSlider.addEventListener('input', () => {
+                        angleInput.value = angleSlider.value;
+                        updateBodyVelocityFromInput(body.id, parseFloat(speedInput.value), parseFloat(angleSlider.value));
+                    });
+                    angleInput.addEventListener('input', () => {
+                        angleSlider.value = angleInput.value;
+                        updateBodyVelocityFromInput(body.id, parseFloat(speedInput.value), parseFloat(angleInput.value));
+                    });
+                });
+            }
+
+            function removeBody(id) {
+                if (bodies.length <= 2) {
+                    showToast('至少保留2个');
+                    return;
+                }
+                bodies = bodies.filter(b => b.id !== id);
+                bodies.forEach((b, i) => {
+                    b.id = i;
+                    b.name = generateBodyName(i);
+                });
+                if (followedBodyId === id) followedBodyId = null;
+                updateBodiesList();
+                updateMenuTitle();
+            }
+
+            function updateBodyName(id, name) {
+                const b = bodies.find(x => x.id === id);
+                if (b) b.name = name;
+            }
+
+            function updateBodyMass(id, val) {
+                const b = bodies.find(x => x.id === id);
+                if (b) {
+                    b.mass = parseFloat(val);
+                    b.radius = b.calculateRadius();
+                    const input = document.querySelector(`.mass-input-${id}`);
+                    if (input) input.value = val;
+                    const slider = document.querySelector(`.mass-slider-${id}`);
+                    if (slider) slider.value = val;
+                }
+            }
+
+            function updateBodyVelocityFromInput(id, speed, angleDeg) {
+                const b = bodies.find(x => x.id === id);
+                if (!b) return;
+                const angleRad = angleDeg * Math.PI / 180;
+                b.vx = speed * Math.cos(angleRad);
+                b.vy = speed * Math.sin(angleRad);
+                const speedInput = document.querySelector(`.speed-input-${id}`);
+                const angleInput = document.querySelector(`.angle-input-${id}`);
+                const speedSlider = document.querySelector(`.speed-slider-${id}`);
+                const angleSlider = document.querySelector(`.angle-slider-${id}`);
+                if (speedInput) speedInput.value = speed.toFixed(2);
+                if (speedSlider) speedSlider.value = speed.toFixed(2);
+                if (angleInput) angleInput.value = angleDeg.toFixed(1);
+                if (angleSlider) angleSlider.value = angleDeg.toFixed(1);
+            }
+
+            function updateVelocityInputsFromBody(body) {
+                const speed = Math.hypot(body.vx, body.vy);
+                let angle = Math.atan2(body.vy, body.vx) * 180 / Math.PI;
+                if (angle < 0) angle += 360;
+                const speedInput = document.querySelector(`.speed-input-${body.id}`);
+                const angleInput = document.querySelector(`.angle-input-${body.id}`);
+                const speedSlider = document.querySelector(`.speed-slider-${body.id}`);
+                const angleSlider = document.querySelector(`.angle-slider-${body.id}`);
+                if (speedInput) speedInput.value = speed.toFixed(2);
+                if (speedSlider) speedSlider.value = speed.toFixed(2);
+                if (angleInput) angleInput.value = angle.toFixed(1);
+                if (angleSlider) angleSlider.value = angle.toFixed(1);
+            }
+
+            window.openColorPicker = function(bodyId) {
+                currentEditingBody = bodies.find(b => b.id === bodyId);
+                if (!currentEditingBody) return;
+                const panel = document.getElementById('colorPickerPanel');
+                const grid = document.getElementById('colorGrid');
+                grid.innerHTML = '';
+                colors.forEach(color => {
+                    const div = document.createElement('div');
+                    div.className = 'color-option';
+                    div.style.backgroundColor = color;
+                    if (color === currentEditingBody.color) div.classList.add('selected');
+                    div.onclick = () => selectColor(color);
+                    grid.appendChild(div);
+                });
+                panel.classList.add('show');
+            };
+
+            window.selectColor = function(color) {
+                if (currentEditingBody) {
+                    currentEditingBody.color = color;
+                    updateBodiesList();
+                }
+                closeColorPicker();
+            };
+
+            window.closeColorPicker = function() {
+                document.getElementById('colorPickerPanel').classList.remove('show');
+                currentEditingBody = null;
+            };
+
+            function initColorPicker() { }
+
+            function addBody() {
+                const centerWorld = screenToWorld(canvas.width / dpr / 2, canvas.height / dpr / 2);
+                const mass = 2.0;
+                const id = bodies.length;
+                const color = getRandomColor();
+                const body = new Body(
+                    centerWorld.x + (Math.random() - 0.5) * 30,
+                    centerWorld.y + (Math.random() - 0.5) * 30,
+                    mass,
+                    color,
+                    id
+                );
+                body.vx = (Math.random() - 0.5) * 0.5;
+                body.vy = (Math.random() - 0.5) * 0.5;
+                bodies.push(body);
+                updateBodiesList();
+                updateMenuTitle();
+                showToast(`已添加 ${body.name}`);
+            }
+
+            function handleCollision(b1, b2) {
+                const key = [b1.id, b2.id].sort().join('-');
+                if (activeCollisions.has(key)) return;
+                activeCollisions.add(key);
+                setTimeout(() => activeCollisions.delete(key), 1000);
+                showCollisionDialog([b1, b2]);
+            }
+
+            function showCollisionDialog(involvedBodies) {
+                const dialog = document.getElementById('collisionDialog');
+                const text = document.getElementById('collisionText');
+                const names = involvedBodies.map(b => b.name).join('、');
+                text.textContent = `${names} 发生碰撞`;
+                const positions = involvedBodies.map(b => worldToScreen(b.x, b.y));
+                const avgY = positions.reduce((sum, p) => sum + p.y, 0) / positions.length;
+                dialog.classList.remove('top', 'bottom');
+                if (avgY < canvas.height / dpr / 2) {
+                    dialog.classList.add('bottom');
+                } else {
+                    dialog.classList.add('top');
+                }
+                dialog.classList.add('show');
+                if (collisionTimeout) clearTimeout(collisionTimeout);
+                collisionTimeout = setTimeout(() => {
+                    dialog.classList.remove('show');
+                }, 2000);
+            }
+
+            function updateEdgeIndicators() {
+                const container = document.getElementById('edgeContainer');
+                container.innerHTML = '';
+
+                bodies.forEach(body => {
+                    if (body.isOnScreen()) return;
+
+                    const pos = worldToScreen(body.x, body.y);
+                    const cssX = pos.x / dpr;
+                    const cssY = pos.y / dpr;
+                    const indicator = document.createElement('div');
+                    indicator.className = 'edge-indicator';
+
+                    const dot = document.createElement('span');
+                    dot.className = 'color-dot';
+                    dot.style.backgroundColor = body.color;
+                    dot.style.boxShadow = `0 0 8px ${body.color}`;
+                    indicator.appendChild(dot);
+
+                    const nameSpan = document.createElement('span');
+                    nameSpan.textContent = formatLabelName(body.name);
+                    indicator.appendChild(nameSpan);
+
+                    if (cssX < 40) {
+                        indicator.classList.add('left');
+                        indicator.classList.add('vertical');
+                        const yPos = Math.max(50, Math.min(canvas.height / dpr - 50, cssY));
+                        indicator.style.top = yPos + 'px';
+                    } else if (cssX > canvas.width / dpr - 40) {
+                        indicator.classList.add('right');
+                        indicator.classList.add('vertical');
+                        const yPos = Math.max(50, Math.min(canvas.height / dpr - 50, cssY));
+                        indicator.style.top = yPos + 'px';
+                    } else if (cssY < 40) {
+                        indicator.classList.add('top');
+                        const xPos = Math.max(50, Math.min(canvas.width / dpr - 50, cssX));
+                        indicator.style.left = xPos + 'px';
+                    } else {
+                        indicator.classList.add('bottom');
+                        const xPos = Math.max(50, Math.min(canvas.width / dpr - 50, cssX));
+                        indicator.style.left = xPos + 'px';
+                    }
+
+                    let clickCount = 0;
+                    let clickTimer = null;
+                    let longPressTimer = null;
+                    let isLongPress = false;
+
+                    const startLongPress = (e) => {
+                        isLongPress = false;
+                        longPressTimer = setTimeout(() => {
+                            isLongPress = true;
+                            const centerWorld = screenToWorld(canvas.width / dpr / 2, canvas.height / dpr / 2);
+                            body.x = centerWorld.x;
+                            body.y = centerWorld.y;
+                            body.vx = 0;
+                            body.vy = 0;
+                            body.trail = [];
+                            showToast(`${body.name} 已移到屏幕中心`);
+
+                            const hint = document.getElementById('longPressHint');
+                            hint.style.left = (e.clientX || e.touches[0].clientX) + 'px';
+                            hint.style.top = ((e.clientY || e.touches[0].clientY) - 40) + 'px';
+                            hint.classList.add('show');
+                            setTimeout(() => hint.classList.remove('show'), 1000);
+                        }, 600);
+                    };
+
+                    const cancelLongPress = () => {
+                        clearTimeout(longPressTimer);
+                    };
+
+                    indicator.addEventListener('mousedown', startLongPress);
+                    indicator.addEventListener('touchstart', (e) => {
+                        startLongPress(e.touches[0]);
+                    }, { passive: true });
+
+                    indicator.addEventListener('mouseup', cancelLongPress);
+                    indicator.addEventListener('mouseleave', cancelLongPress);
+                    indicator.addEventListener('touchend', cancelLongPress);
+
+                    indicator.addEventListener('click', (e) => {
+                        if (isLongPress) {
+                            isLongPress = false;
+                            return;
+                        }
+                        e.stopPropagation();
+                        clickCount++;
+                        if (clickCount === 1) {
+                            clickTimer = setTimeout(() => {
+                                const targetOffsetX = - (body.x - canvas.width / dpr / 2) * scale;
+                                const targetOffsetY = - (body.y - canvas.height / dpr / 2) * scale;
+                                animateTo(targetOffsetX, targetOffsetY);
+                                showToast(`跳转至 ${body.name}`);
+                                clickCount = 0;
+                            }, 250);
+                        } else if (clickCount === 2) {
+                            clearTimeout(clickTimer);
+                            const centerWorld = screenToWorld(canvas.width / dpr / 2, canvas.height / dpr / 2);
+                            body.x = centerWorld.x;
+                            body.y = centerWorld.y;
+                            body.vx = 0;
+                            body.vy = 0;
+                            body.trail = [];
+                            showToast(`${body.name} 已居中`);
+                            clickCount = 0;
+                        }
+                    });
+
+                    container.appendChild(indicator);
+                });
+            }
+
+            function animateTo(targetX, targetY) {
+                const startX = offsetX, startY = offsetY, startTime = Date.now(), duration = 400;
+
+                function step() {
+                    const elapsed = Date.now() - startTime;
+                    const t = Math.min(elapsed / duration, 1);
+                    const ease = 1 - Math.pow(1 - t, 3);
+                    offsetX = startX + (targetX - startX) * ease;
+                    offsetY = startY + (targetY - startY) * ease;
+                    if (t < 1) requestAnimationFrame(step);
+                }
+                step();
+            }
+
+            function drawDistanceLines() {
+                if (!showDistanceLines) return;
+                for (let i = 0; i < bodies.length; i++) {
+                    for (let j = i + 1; j < bodies.length; j++) {
+                        const b1 = bodies[i], b2 = bodies[j];
+                        const p1 = worldToScreen(b1.x, b1.y), p2 = worldToScreen(b2.x, b2.y);
+                        if (p1.x < -50 || p1.x > canvas.width + 50 || p1.y < -50 || p1.y > canvas.height + 50 ||
+                            p2.x < -50 || p2.x > canvas.width + 50 || p2.y < -50 || p2.y > canvas.height + 50) continue;
+                        const isHighlighted = highlightedLine && highlightedLine.i === i && highlightedLine.j === j;
+                        ctx.save();
+                        if (isHighlighted) {
+                            ctx.strokeStyle = '#FFD700';
+                            ctx.lineWidth = 3;
+                            ctx.setLineDash([]);
+                        } else {
+                            ctx.strokeStyle = 'rgba(150,150,150,0.4)';
+                            ctx.lineWidth = 1;
+                            ctx.setLineDash([5, 3]);
+                        }
+                        ctx.beginPath();
+                        ctx.moveTo(p1.x, p1.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.stroke();
+                        ctx.restore();
+                    }
+                }
+            }
+
+            function loop() {
+                if (followedBodyId !== null) {
+                    const followed = bodies.find(b => b.id === followedBodyId);
+                    if (followed) {
+                        offsetX = - (followed.x - canvas.width / dpr / 2) * scale;
+                        offsetY = - (followed.y - canvas.height / dpr / 2) * scale;
+                    }
+                }
+
+                currentBodyScale += (1.0 - currentBodyScale) * BODY_SCALE_SPEED;
+
+                ctx.fillStyle = '#1A1A1A';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                drawDistanceLines();
+                drawForceArrows();
+
+                updatePhysics(stepSize);
+
+                if (preset === 'research') {
+                    computeSystemStats();
+                }
+
+                for (let body of bodies) {
+                    ctx.save();
+                    ctx.globalAlpha = 1.0;
+                    body.draw();
+                    ctx.restore();
+                }
+                if (velocityEditBody) drawVelocityArrow(velocityEditBody);
+                updateEdgeIndicators();
+
+                requestAnimationFrame(loop);
+            }
+
+            function updateMenuTitle() {
+                const count = bodies.length;
+                const title = document.getElementById('menuTitle');
+                if (count === 3) title.textContent = '三体控制台';
+                else if (count === 2) title.textContent = '二体控制台';
+                else if (count === 1) title.textContent = '单体控制台';
+                else title.textContent = `${count}体控制台`;
+            }
+
+            function resetSimulation() {
+                bodies = [];
+                const cx = canvas.width / dpr / 2;
+                const cy = canvas.height / dpr / 2;
+                const m1 = 2.0,
+                    m2 = 0.5,
+                    distance = 50;
+                const orbitalSpeed = Math.sqrt(G * m1 / distance);
+
+                bodies.push(new Body(cx, cy, m1, getRandomColor(), 0));
+                bodies[0].vx = 0;
+                bodies[0].vy = 0;
+
+                bodies.push(new Body(cx + distance, cy, m2, getRandomColor(), 1));
+                bodies[1].vx = 0;
+                bodies[1].vy = orbitalSpeed;
+
+                scale = 1;
+                offsetX = 0;
+                offsetY = 0;
+                timeScale = 1.0;
+                G = 1.0;
+
+                updateSpeedFromRange(1.0);
+                updateG(1.0);
+                followedBodyId = null;
+                highlightedLine = null;
+                updateBodiesList();
+                updateMenuTitle();
+                showToast('已重置 (二体系统)');
+                computeSystemStats(true);
+                energyErrorHistory = [];
+            }
+
+            function init() {
+                resize();
+                resetSimulation();
+                initColorPicker();
+                canvas.addEventListener('click', onCanvasClick);
+                setTimeout(() => {
+                    document.getElementById('gestureHint').classList.add('show');
+                    setTimeout(() => document.getElementById('gestureHint').classList.remove('show'), 6000);
+                }, 1000);
+                loop();
+            }
+
+            // 挂载全局函数
+            window.toggleFollow = toggleFollow;
+            window.updateBodyMass = updateBodyMass;
+            window.updateBodyVelocityFromInput = updateBodyVelocityFromInput;
+            window.removeBody = removeBody;
+            window.updateBodyName = updateBodyName;
+            window.toggleSimulation = toggleSimulation;
+            window.resetSimulation = resetSimulation;
+            window.setMode = setMode;
+            window.setPreset = setPreset;
+            window.setIntegrator = setIntegrator;
+            window.setStepSize = setStepSize;
+            window.updateSpeedFromRange = updateSpeedFromRange;
+            window.updateSpeedFromInput = updateSpeedFromInput;
+            window.updateG = updateG;
+            window.toggleDistanceLines = toggleDistanceLines;
+            window.toggleForceArrows = toggleForceArrows;
+            window.toggleSolutions = toggleSolutions;
+            window.loadSpecialSolution = loadSpecialSolution;
+            window.addBody = addBody;
+            window.exportConfig = exportConfig;
+            window.importConfig = importConfig;
+            window.toggleAI = toggleAI;
+            window.closeColorPicker = closeColorPicker;
+
+            init();
+        })();
+    </script>
+</body>
+</html>
